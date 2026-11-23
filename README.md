@@ -1,12 +1,15 @@
 # myportfolio_mobile
 
-MyPortfolio Mobile adalah prototipe aplikasi portofolio berbasis Flutter untuk Tugas 7 Pemrograman Berbasis Platform (PBP). Aplikasi ini menampilkan identitas mahasiswa dan mendemonstrasikan penggunaan widget Material 3, tata letak kisi, dan respons terhadap ketukan.
+MyPortfolio Mobile adalah prototipe aplikasi portofolio berbasis Flutter untuk Pemrograman Berbasis Platform (PBP). Proyek ini menggunakan navigasi drawer dari Tutorial 09 dan formulir Award untuk Tugas 8.
 
 ## Fitur
 
 - Halaman utama menampilkan tiga kartu informasi berisi NPM, nama, dan kelas.
-- Menu **Lihat Proyek**, **Tambah Proyek**, dan **Logout** disusun dalam tiga kolom. Ketiganya memakai ikon dan warna berbeda, masing-masing biru, hijau, dan merah.
-- Ketukan pada setiap menu menampilkan `SnackBar` yang menyebut nama menu tersebut. Pada versi Tugas 7, ketiga tombol berfungsi sebagai demonstrasi interaksi.
+- Menu **Lihat Proyek**, **Tambah Proyek**, **Tambah Award**, dan **Logout** memakai ikon dan warna berbeda. Kisi memakai dua kolom pada layar sempit dan tiga kolom pada layar lebih lebar. Halaman utama dapat digulir.
+- **Tambah Proyek** membuka formulir Tutorial 09, sedangkan **Tambah Award** membuka formulir baru. **Lihat Proyek** dan **Logout** masih menampilkan `SnackBar` demonstrasi.
+- Drawer bersama menyediakan **Home**, **Add Project**, dan **Add Award**. **Home** kembali ke halaman utama yang sudah ada.
+- Formulir Award memvalidasi judul, recognition, deskripsi, URL gambar opsional, dan tanggal penghargaan sebelum menampilkan dialog ringkasan. Tombol **Tutup** mengembalikan pengguna ke formulir dengan isian tetap tersedia.
+- Tombol **Simpan** pada tugas ini hanya menampilkan ringkasan; belum menyimpan data ke basis data atau mengirimkannya ke backend.
 
 ## Menjalankan proyek
 
@@ -20,7 +23,7 @@ flutter devices
 flutter run
 ```
 
-Jika beberapa perangkat tersedia, pilih salah satunya dengan `flutter run -d <device-id>`. Untuk Chrome, gunakan `flutter run -d chrome`. Setelah halaman utama tampil, tekan setiap kartu menu dan periksa pesan yang muncul di bagian bawah layar. [Referensi perintah Flutter](https://docs.flutter.dev/reference/flutter-cli)
+Jika beberapa perangkat tersedia, pilih salah satunya dengan `flutter run -d <device-id>`. Untuk Chrome, gunakan `flutter run -d chrome`. Setelah halaman utama tampil, tekan **Tambah Award**, isi formulir, lalu tekan **Simpan**. Gunakan **Home** pada drawer formulir untuk kembali saat menjalankan aplikasi di Chrome. [Referensi perintah Flutter](https://docs.flutter.dev/reference/flutter-cli)
 
 ## Struktur proyek
 
@@ -28,92 +31,44 @@ Jika beberapa perangkat tersedia, pilih salah satunya dengan `flutter run -d <de
 | --- | --- |
 | [`lib/main.dart`](lib/main.dart) | Titik masuk aplikasi, widget `MyApp`, tema Material 3, dan penentuan halaman awal. |
 | [`lib/menu.dart`](lib/menu.dart) | Halaman utama, komponen kartu informasi dan menu, serta model data menu. |
+| [`lib/project_form.dart`](lib/project_form.dart) | Formulir Add Project dari Tutorial 09. |
+| [`lib/screens/award_form.dart`](lib/screens/award_form.dart) | Formulir Award, pemilih tanggal, validasi, dan dialog ringkasan. |
+| [`lib/widgets/left_drawer.dart`](lib/widgets/left_drawer.dart) | Drawer bersama untuk Home, Add Project, dan Add Award. |
+| [`test/widget_test.dart`](test/widget_test.dart) | Pengujian navigasi, validasi, dialog, dan layar sempit dengan papan ketik. |
 | [`pubspec.yaml`](pubspec.yaml) | Persyaratan versi Dart dan dependensi proyek. |
 
-## Kontribusi
+### Tugas 8
 
-Gunakan [GitHub Issues](https://github.com/MightBeFonias/myportfolio_mobile/issues) untuk melaporkan masalah. Sertakan langkah reproduksi dan perangkat yang digunakan. Untuk mengusulkan perubahan kode, buat *fork*, kerjakan perubahan di cabang terpisah, jalankan `flutter analyze`, lalu ajukan *pull request*.
+1. **Perbedaan `Navigator.push()`, `Navigator.pushReplacement()`, dan `Navigator.pop()`, serta navigasi formulir dan Home**
 
-## Lisensi
+   `Navigator.push()` menambahkan rute baru di atas tumpukan navigasi. Rute sebelumnya tetap tersedia, sehingga pengguna dapat kembali dengan tombol kembali perangkat. Kartu **Tambah Award** di `lib/menu.dart` menggunakan `Navigator.push()` dengan `MaterialPageRoute` menuju `AwardFormPage`.
 
-Lisensi distribusi belum dicantumkan di repositori ini.
+   `Navigator.pushReplacement()` mengganti rute yang sedang aktif. Dalam drawer, metode ini digunakan ketika berpindah dari satu formulir ke formulir lain, misalnya Add Project ke Add Award. Dengan demikian, pergantian formulir tidak terus menumpuk rute. Saat formulir dibuka dari Home melalui drawer, aplikasi menggunakan `push()` agar Home tetap menjadi rute pertama.
 
-## Tugas 7 — Elemen Dasar Flutter
+   `Navigator.pop()` menutup rute teratas atau entri riwayat lokal seperti drawer. Opsi **Home** terlebih dahulu menutup drawer dengan `pop()`, kemudian menjalankan `popUntil((route) => route.isFirst)` untuk kembali ke halaman utama yang sudah ada, tanpa membuat salinan Home. Alur ini juga dapat dipakai di Chrome. Tombol **Tutup** pada dialog menggunakan `pop()` dengan konteks dialog agar hanya dialog yang ditutup.
 
-### 1. Apa itu *widget tree* dan bagaimana hubungan induk-anak bekerja?
+2. **Konsistensi struktur `Scaffold`, `AppBar`, `Drawer`, dan tema**
 
-*Widget tree* adalah susunan widget secara hierarkis yang mendeskripsikan antarmuka aplikasi. Widget induk (*parent*) dapat menerima satu anak melalui `child`, beberapa anak melalui `children`, atau anak dengan peran tertentu seperti `appBar` dan `body` pada `Scaffold`. Saat mengatur tata letak, induk meneruskan batas ukuran ke anak, anak menentukan ukurannya dalam batas tersebut, lalu induk menempatkan anak.
+   Setiap halaman memakai `Scaffold` untuk menyediakan tempat bagi bilah judul, drawer, dan isi halaman. `AppBar` menjelaskan halaman yang sedang dibuka, sedangkan komponen `LeftDrawer` yang sama menyediakan pilihan navigasi konsisten di Home, Add Project, dan Add Award.
 
-Di proyek ini, `runApp()` memasang `MyApp` sebagai widget akar. `MyApp` membangun `MaterialApp`, yang menetapkan `MyHomePage` sebagai halaman awal. Pada halaman itu, `Row` menjadi induk tiga `InfoCard` dan menyusunnya secara horizontal. Di cabang lain, `GridView.count` menyusun tiga `ItemCard` sebagai anak dalam kisi.
+   `MyApp` menetapkan `ColorScheme.fromSeed(seedColor: Colors.indigo)` dan `AppBarTheme` di `lib/main.dart`. AppBar Home dan Award sama-sama mengambil warna `colorScheme.primary` serta teks putih dari tema tersebut. Latar header drawer juga memakai `Theme.of(context).colorScheme.primary`, sehingga warna identitas portofolio konsisten di beberapa halaman.
 
-### 2. Sebutkan semua widget yang digunakan dalam proyek ini dan jelaskan fungsinya.
+3. **Alasan pemilihan tata letak formulir dan peran jarak serta pengguliran**
 
-Widget berikut dibuat secara eksplisit di lib/main.dart dan lib/menu.dart.
+   Formulir memakai `Column` dengan satu kolom agar urutan pengisian judul, recognition, deskripsi, URL gambar, tanggal, lalu Simpan mudah diikuti. `ConstrainedBox(maxWidth: 640)` menjaga kolom tetap nyaman dibaca pada layar lebar. `Padding` memberi jarak dari tepi layar, dan `SizedBox` memisahkan input serta tombol agar tidak berhimpitan. `SafeArea` menghindarkan isi dari area sistem perangkat.
 
-| Widget | Fungsi dalam proyek |
-| --- | --- |
-| `MyApp` | Widget akar yang membangun `MaterialApp` dengan tema dan halaman awal proyek. |
-| `MyHomePage` | Menyusun halaman utama yang berisi identitas mahasiswa, pesan sambutan, dan menu. |
-| `InfoCard` | Komponen yang dipakai ulang untuk menampilkan judul dan nilai informasi NPM, nama, atau kelas. |
-| `ItemCard` | Komponen yang dipakai ulang untuk menampilkan ikon dan label menu serta menangani ketukan. |
-| `MaterialApp` | Menyediakan konfigurasi aplikasi Material, termasuk tema dan halaman awal. |
-| `Scaffold` | Menyediakan struktur halaman untuk `AppBar`, isi halaman, dan penempatan `SnackBar`. |
-| `AppBar` | Menampilkan bilah atas dengan judul **MyPortfolio** dan warna utama dari tema. |
-| `Text` | Menampilkan judul, identitas, pesan sambutan, label menu, dan pesan `SnackBar`. |
-| `Padding` | Memberi ruang di tepi halaman, di atas pesan sambutan, dan di antara ikon serta label menu. |
-| `Column` | Menyusun bagian halaman dan isi setiap kartu secara vertikal. |
-| `Row` | Menyusun ketiga kartu informasi secara horizontal dengan jarak merata. |
-| `SizedBox` | Memberi jarak vertikal antara baris identitas dan bagian sambutan, serta antara judul dan isi kartu informasi. |
-| `Center` | Memusatkan bagian sambutan dan menu serta isi kartu menu. |
-| `GridView` | Menata kartu menu dalam kisi tiga kolom melalui konstruktor `GridView.count`. |
-| `Card` | Membungkus informasi identitas dalam kartu Material dengan elevasi `2.0`. |
-| `Container` | Mengatur lebar dan ruang dalam kartu informasi serta ruang dalam kartu menu. |
-| `Material` | Memberi kartu menu warna dan sudut membulat serta menyediakan permukaan untuk efek riak. |
-| `InkWell` | Menangani ketukan pada kartu menu, memberi efek riak, dan memicu tampilan `SnackBar`. |
-| `Icon` | Menampilkan ikon folder, tambah, dan keluar pada kartu menu. |
-| `SnackBar` | Menampilkan pesan sementara yang menyebut menu yang ditekan. |
+   `SingleChildScrollView` membungkus seluruh formulir agar input dan tombol Simpan tetap dapat dijangkau pada layar sempit. Ketika papan ketik tampil, `Scaffold` secara default memperkecil area isi, lalu pengguna dapat menggulir ruang yang tersisa. Deskripsi menggunakan input beberapa baris. Isi dialog ringkasan juga dapat digulir sehingga deskripsi panjang tidak membuat tombol Tutup tidak terjangkau.
 
-`ItemHomepage` adalah kelas data untuk nama, ikon, dan warna setiap menu. Kode juga mengakses `Theme`, `MediaQuery`, dan `ScaffoldMessenger` yang tersedia pada pohon widget untuk membaca tema, memperoleh ukuran layar, dan mengelola pesan.
+4. **Peran `GlobalKey<FormState>`, `validator`, dan `validate()` saat Simpan ditekan**
 
-### 3. Apa fungsi `MaterialApp` dan mengapa widget ini umumnya digunakan sebagai widget akar?
+   `_formKey` menghubungkan kode tombol Simpan dengan `FormState` dari formulir Award. Setiap `validator` mengembalikan pesan kesalahan jika nilai tidak sah dan `null` jika sah. Saat Simpan ditekan, `_formKey.currentState!.validate()` menjalankan semua validator dan menampilkan pesan pada kolom terkait. Jika hasilnya `false`, proses berhenti. Jika seluruh input valid, `FormState.save()` menjalankan `onSaved` untuk mengambil teks yang sudah di-`trim()`, lalu `showDialog()` menampilkan semua isian dalam `AlertDialog`.
 
-`MaterialApp` menyediakan konfigurasi tingkat aplikasi untuk Material Design. Widget ini mengatur tema, lokalisasi, dan navigasi. Penempatan di dekat akar memberi halaman dan komponen di bawahnya akses ke konfigurasi yang sama. Saat `home` diisi, `MaterialApp` menggunakan widget tersebut untuk rute awal `/`.
+   Sebagai contoh, judul berisi `"   "` ditolak karena setelah `trim()` tidak ada karakter bermakna. Judul atau recognition lebih dari 255 karakter juga ditolak. URL gambar boleh kosong, tetapi jika diisi harus berupa URL lengkap dengan host yang valid, tanpa spasi, dan maksimal 200 karakter. Pemilih tanggal menggunakan `showDatePicker()` dan tanggal wajib dipilih. Tidak ada pemeriksaan urutan tanggal karena model Award hanya memiliki satu atribut tanggal.
 
-Di proyek ini, `runApp()` memasang `MyApp` sebagai widget akar. `MyApp.build()` mengembalikan `MaterialApp` yang mengaktifkan Material 3, menggunakan indigo sebagai warna dasar tema, dan menetapkan `MyHomePage` sebagai `home`. `AppBar` mengambil warna utamanya dari tema tersebut.
+   `TextInputType.url` hanya membantu menyediakan papan ketik yang sesuai; pengguna masih dapat mengetik atau menempelkan `bukan-url`. Karena itu, jenis input dan papan ketik belum cukup untuk memastikan data valid. Pemeriksaan tetap dilakukan melalui validator sebelum dialog dibuka.
 
-### 4. Apa perbedaan `StatelessWidget` dan `StatefulWidget`? Kapan masing-masing digunakan?
+#### AI Disclosure — Tugas 8
 
-- **`StatelessWidget`** cocok ketika tampilan dapat dibangun dari konfigurasi yang diterima dan data yang tersedia melalui `BuildContext`. `build()` dapat dipanggil ulang jika induk memberi konfigurasi baru atau jika data yang dibaca dari konteks berubah. Di proyek ini, `InfoCard` memakai `title`, `content`, dan lebar layar untuk membangun kartu informasi.
-- **`StatefulWidget`** cocok ketika komponen perlu menyimpan keadaan lokal yang bisa berubah selama digunakan. Konfigurasi widget tetap *immutable*, sementara keadaan yang berubah disimpan di objek `State` terpisah. `setState()` memberi tahu Flutter untuk menjadwalkan pembangunan ulang bagian antarmuka itu. Sebagai contoh, formulir tambah proyek dapat menyimpan kategori yang dipilih atau status validasi selama pengguna mengisi formulir.
+Saya menggunakan Codex untuk membantu memeriksa checklist tugas, menerapkan formulir Award berdasarkan model backend, menambahkan kartu serta navigasi drawer, memperbaiki tata letak layar sempit, menulis pengujian, dan menyusun jawaban reflektif README ini. Saya menentukan section Award dan memberikan empat pertanyaan reflektif beserta format README yang diwajibkan.
 
-Keempat widget kustom di proyek ini menggunakan `StatelessWidget`. Saat kartu menu diketuk, `ItemCard` menyerahkan penampilan pesan kepada `ScaffoldMessenger`, sehingga kartu cukup memakai data `item` yang diterimanya.
-
-### 5. Apa itu `BuildContext` dan bagaimana penggunaannya di `build()`?
-
-`BuildContext` menunjukkan posisi widget di pohon. Flutter memberikan konteks kepada `build(BuildContext context)` agar widget dapat mengambil data atau mencari layanan yang tersedia melalui leluhurnya. Konteks dari metode `build()` berada di atas widget yang dikembalikan oleh metode tersebut. Jika `build()` membuat `Theme` baru, gunakan konteks widget anak atau `Builder` di bawah `Theme` itu untuk membaca tema tersebut.
-
-Di halaman utama, `BuildContext` dipakai untuk tiga hal.
-
-- `Theme.of(context).colorScheme.primary` mengambil warna latar `AppBar` dari tema.
-- `MediaQuery.of(context).size.width / 3.5` menentukan lebar `InfoCard` dari lebar area tampilan.
-- `ScaffoldMessenger.of(context)` dipanggil di dalam `onTap` untuk menyembunyikan `SnackBar` aktif dan menampilkan pesan menu yang baru ditekan.
-
-### 6. Apa perbedaan *hot reload*, *hot restart*, dan *full restart*?
-
-| Cara | Yang terjadi | Kapan digunakan |
-| --- | --- | --- |
-| **Hot reload** | Flutter memuat perubahan kode Dart dan membangun ulang pohon widget sambil mempertahankan keadaan aplikasi di memori. `main()` dan `initState()` yang sudah berjalan tidak dipanggil ulang. | Saat mengubah kode yang dijalankan oleh `build()`, misalnya mengganti teks sambutan, warna tema, atau jarak antarwidget. |
-| **Hot restart** | Eksekusi Dart dimulai kembali dari `main()` dan keadaan aplikasi di memori dibuat ulang. | Saat mengubah logika di `main()` atau `initState()`, mengubah nilai awal variabel global yang sudah diinisialisasi, atau membuat perubahan yang ditolak oleh *hot reload*, seperti mengubah `enum` menjadi kelas biasa. |
-| **Full restart** | Sesi aplikasi dihentikan dan dijalankan kembali sehingga kode platform yang berubah ikut dibangun dan dimuat. | Saat mengubah kode native, seperti Kotlin atau Java di Android maupun Swift atau Objective-C di iOS. |
-
-Dalam mode debug lewat `flutter run`, tekan `r` untuk *hot reload* atau `R` untuk *hot restart*. Untuk *full restart*, hentikan sesi dan jalankan kembali `flutter run`.
-
-### AI Disclosure
-
-Saya menggunakan codex untuk membantu saya mengerjakan Tugas Individu 7 PBP.
-
-Saya menggunakannya untuk beberapa hal berikut:
-- Memperbaiki README.md supaya dokumentasi codenya lebih jelas dan lengkap
-- Membantu saya menjawab pertanyaan reflektif yang diberikan pada Tugas 7
-
-Untuk strategi prompting, saya melarang codex untuk melakukan commit sehingga saya bisa cek dulu perubahan-perubahan yang dilakukan codex.
+Prompt yang saya gunakan mencakup permintaan untuk memeriksa implementasi `myportfolio_mobile` terhadap checklist, lalu meminta implementasi seluruh kekurangannya dengan section Award. Proses bantuan mencakup membaca source dan model yang ada, menerapkan perubahan, menjalankan analisis serta pengujian, dan memperbaiki masalah yang ditemukan. Jawaban dan implementasi yang dihasilkan AI perlu saya pahami sebagai bagian dari pembelajaran tugas ini.

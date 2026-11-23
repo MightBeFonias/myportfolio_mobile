@@ -11,8 +11,12 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: Colors.indigo,
+      secondary: Colors.amber[700],
+    );
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'MyPortfolio',
       theme: ThemeData(
         // This is the theme of your application.
         //
@@ -29,9 +33,10 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.indigo,
-          secondary: Colors.amber[700],
+        colorScheme: colorScheme,
+        appBarTheme: AppBarTheme(
+          backgroundColor: colorScheme.primary,
+          foregroundColor: Colors.white,
         ),
         useMaterial3: true,
       ),
