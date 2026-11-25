@@ -1,19 +1,61 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:myportfolio_mobile/main.dart';
 import 'package:myportfolio_mobile/menu.dart';
-import 'package:myportfolio_mobile/project_form.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:myportfolio_mobile/screens/experience_form.dart';
 import 'package:myportfolio_mobile/screens/award_form.dart';
+import 'package:myportfolio_mobile/screens/login_screen.dart';
+import 'package:myportfolio_mobile/services/api_client.dart';
 
 Finder field(String name) => find.byKey(ValueKey('award-$name'));
 
-Future<void> openAward(WidgetTester tester) async {
-  await tester.pumpWidget(const MyApp());
+Future<void> openApp(
+  WidgetTester tester, {
+  void Function(Map<String, dynamic>)? onAward,
+  Future<http.Response> Function(http.Request)? handleRequest,
+}) async {
+  final api = ApiClient(
+    client: MockClient((request) async {
+      if (request.url.path == '/api/v1/auth/token/') {
+        return http.Response('{"token":"test-token"}', 200);
+      }
+      if (request.url.path == '/api/v1/awards/' && request.method == 'POST') {
+        expect(request.headers['Authorization'], 'Token test-token');
+        final data = jsonDecode(request.body) as Map<String, dynamic>;
+        onAward?.call(data);
+        return http.Response(jsonEncode({...data, 'id': 'saved-award'}), 201);
+      }
+      if (handleRequest != null) return handleRequest(request);
+      throw StateError('Unexpected request: ${request.method} ${request.url}');
+    }),
+  );
+  addTearDown(api.close);
+  await tester.pumpWidget(MyApp(apiClient: api));
+}
+
+Future<void> login(WidgetTester tester) async {
+  expect(find.byType(LoginScreen), findsOneWidget);
+  final fields = find.byType(TextFormField);
+  await tester.enterText(fields.at(0), 'owner');
+  await tester.enterText(fields.at(1), 'test-password');
+  await tester.tap(find.widgetWithText(FilledButton, 'Login'));
   await tester.pumpAndSettle();
+}
+
+Future<void> openAward(
+  WidgetTester tester, {
+  void Function(Map<String, dynamic>)? onAward,
+}) async {
+  await openApp(tester, onAward: onAward);
   await tester.ensureVisible(find.text('Tambah Award'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Tambah Award'));
   await tester.pumpAndSettle();
+  await login(tester);
 }
 
 Future<void> openDrawer(WidgetTester tester) async {
@@ -33,6 +75,8 @@ Future<void> pickDate(WidgetTester tester) async {
   await tester.tap(field('date'));
   await tester.pumpAndSettle();
   expect(find.byType(DatePickerDialog), findsOneWidget);
+  await tester.tap(find.byTooltip('Previous month'));
+  await tester.pumpAndSettle();
   await tester.tap(find.text('15'));
   await tester.tap(find.text('Pilih'));
   await tester.pumpAndSettle();
@@ -53,6 +97,112 @@ Future<void> save(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('both public lists show details without a token', (tester) async {
+    await openApp(
+      tester,
+      handleRequest: (request) async {
+        expect(request.method, 'GET');
+        expect(request.headers.containsKey('Authorization'), isFalse);
+        final entries = switch (request.url.path) {
+          '/api/v1/experience/' => [
+            {
+              'id': 'experience-uuid',
+              'title': 'Flutter Internship',
+              'description': 'Built the portfolio app',
+              'category': 'internship',
+              'category_display': 'Internship',
+              'started_at': '2026-01-15T05:00:00Z',
+              'ended_at': null,
+            },
+          ],
+          '/api/v1/awards/' => [
+            {
+              'id': 'award-uuid',
+              'title': 'Innovation Prize',
+              'description': 'Student innovation competition',
+              'recognition': 'First place',
+              'awarded_at': '2026-01-15',
+            },
+          ],
+          _ => throw StateError('Unexpected list URL: ${request.url}'),
+        };
+        return http.Response(jsonEncode(entries), 200);
+      },
+    );
+
+    final titles = {
+      'Lihat Experience': 'Flutter Internship',
+      'Lihat Award': 'Innovation Prize',
+    };
+    for (final entry in titles.entries) {
+      await tester.tap(find.text(entry.key));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(entry.value));
+      await tester.pumpAndSettle();
+      expect(find.text('Detail'), findsOneWidget);
+      expect(find.text(entry.value), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets(
+    'Experience posts the selected category and supports no end date',
+    (tester) async {
+      Map<String, dynamic>? submitted;
+      await openApp(
+        tester,
+        handleRequest: (request) async {
+          expect(request.url.path, '/api/v1/experience/');
+          expect(request.method, 'POST');
+          expect(request.headers['Authorization'], 'Token test-token');
+          final data = jsonDecode(request.body) as Map<String, dynamic>;
+          submitted = data;
+          return http.Response(jsonEncode({...data, 'id': 'saved'}), 201);
+        },
+      );
+      await tester.tap(find.text('Tambah Experience'));
+      await tester.pumpAndSettle();
+      await login(tester);
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Judul Experience'),
+        '  Magang Flutter  ',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Deskripsi'),
+        'Mengembangkan aplikasi.',
+      );
+      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Internship').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextFormField, 'Tanggal Mulai'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Previous month'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('15'));
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      await save(tester);
+
+      final now = DateTime.now();
+      expect(submitted, {
+        'title': 'Magang Flutter',
+        'description': 'Mengembangkan aplikasi.',
+        'category': 'internship',
+        'started_at': DateTime(
+          now.year,
+          now.month - 1,
+          15,
+        ).toUtc().toIso8601String(),
+        'ended_at': null,
+      });
+      expect(find.text('Experience berhasil ditambahkan'), findsOneWidget);
+    },
+  );
+
   testWidgets('Award card opens form and system back returns to Home', (
     tester,
   ) async {
@@ -64,16 +214,15 @@ void main() {
     expect(find.byType(AwardFormPage), findsNothing);
   });
 
-  testWidgets('drawer preserves Home and Add Project and opens Add Award', (
-    tester,
-  ) async {
-    await tester.pumpWidget(const MyApp());
+  testWidgets('drawer keeps Home and guards the Award form', (tester) async {
+    await openApp(tester);
     final home = tester.element(find.byType(MyHomePage));
     await openDrawer(tester);
     expect(find.text('Home'), findsOneWidget);
-    expect(find.text('Add Project'), findsOneWidget);
-    await tester.tap(find.text('Add Award'));
+    expect(find.widgetWithText(ListTile, 'Tambah Experience'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ListTile, 'Tambah Award'));
     await tester.pumpAndSettle();
+    await login(tester);
     expect(find.byType(AwardFormPage), findsOneWidget);
     await openDrawer(tester);
     await tester.tap(find.text('Home'));
@@ -83,19 +232,20 @@ void main() {
     expect(find.byType(AwardFormPage), findsNothing);
   });
 
-  testWidgets('drawer switches Project to Award without stacking forms', (
+  testWidgets('drawer switches Experience to Award without stacking forms', (
     tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
+    await openApp(tester);
     await openDrawer(tester);
-    await tester.tap(find.text('Add Project'));
+    await tester.tap(find.widgetWithText(ListTile, 'Tambah Experience'));
     await tester.pumpAndSettle();
-    expect(find.byType(ProjectFormPage), findsOneWidget);
+    await login(tester);
+    expect(find.byType(ExperienceFormPage), findsOneWidget);
     await openDrawer(tester);
-    await tester.tap(find.text('Add Award'));
+    await tester.tap(find.widgetWithText(ListTile, 'Tambah Award'));
     await tester.pumpAndSettle();
     expect(find.byType(AwardFormPage), findsOneWidget);
-    expect(find.byType(ProjectFormPage, skipOffstage: false), findsNothing);
+    expect(find.byType(ExperienceFormPage, skipOffstage: false), findsNothing);
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.byType(MyHomePage), findsOneWidget);
@@ -128,47 +278,39 @@ void main() {
     );
   }
 
-  testWidgets('valid Award shows all trimmed values and keeps form on close', (
+  testWidgets('valid Award sends trimmed fields and ISO date to Django', (
     tester,
   ) async {
-    await openAward(tester);
+    Map<String, dynamic>? submitted;
+    await openAward(tester, onAward: (data) => submitted = data);
     await fillRequired(tester);
     await enter(tester, 'image', '  https://example.com/award.png  ');
     await save(tester);
-    expect(find.byType(AlertDialog), findsOneWidget);
-    expect(find.text('Judul Award: Lomba Inovasi'), findsOneWidget);
-    expect(find.text('Recognition: Juara 1'), findsOneWidget);
-    expect(find.text('Deskripsi: Penghargaan proyek Flutter.'), findsOneWidget);
-    expect(
-      find.text('URL Gambar: https://example.com/award.png'),
-      findsOneWidget,
-    );
+
     final now = DateTime.now();
-    final month = now.month.toString().padLeft(2, '0');
-    expect(
-      find.text('Tanggal Penghargaan: 15/$month/${now.year}'),
-      findsOneWidget,
-    );
-    await tester.tap(find.text('Tutup'));
+    final date = DateTime(now.year, now.month - 1, 15);
+    expect(submitted, {
+      'title': 'Lomba Inovasi',
+      'recognition': 'Juara 1',
+      'description': 'Penghargaan proyek Flutter.',
+      'image': 'https://example.com/award.png',
+      'awarded_at': date.toIso8601String().split('T').first,
+    });
+    expect(find.text('Award berhasil ditambahkan'), findsOneWidget);
+    await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsNothing);
-    expect(find.byType(AwardFormPage), findsOneWidget);
-    expect(
-      tester.widget<TextFormField>(field('date')).controller!.text,
-      '15/$month/${now.year}',
-    );
-    await save(tester);
-    expect(find.text('Judul Award: Lomba Inovasi'), findsOneWidget);
+    expect(find.byType(MyHomePage), findsOneWidget);
   });
 
-  testWidgets('image is optional and reports blank value in summary', (
+  testWidgets('image is optional and is sent as an empty string', (
     tester,
   ) async {
-    await openAward(tester);
+    Map<String, dynamic>? submitted;
+    await openAward(tester, onAward: (data) => submitted = data);
     await fillRequired(tester);
     await enter(tester, 'image', '   ');
     await save(tester);
-    expect(find.text('URL Gambar: Tidak diisi'), findsOneWidget);
+    expect(submitted?['image'], '');
   });
 
   for (final name in ['title', 'recognition']) {

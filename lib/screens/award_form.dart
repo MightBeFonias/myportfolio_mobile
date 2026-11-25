@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:myportfolio_mobile/models/award.dart';
 import 'package:myportfolio_mobile/widgets/left_drawer.dart';
+import 'package:myportfolio_mobile/widgets/portfolio_submission.dart';
 
 class AwardFormPage extends StatefulWidget {
   const AwardFormPage({super.key});
@@ -17,6 +19,7 @@ class _AwardFormPageState extends State<AwardFormPage> {
   String _description = '';
   String _image = '';
   DateTime? _awardedAt;
+  bool _saving = false;
 
   @override
   void dispose() {
@@ -81,11 +84,12 @@ class _AwardFormPageState extends State<AwardFormPage> {
 
   Future<void> _pickDate() async {
     FocusScope.of(context).unfocus();
+    final today = DateTime.now();
     final date = await showDatePicker(
       context: context,
-      initialDate: _awardedAt ?? DateTime.now(),
+      initialDate: _awardedAt ?? today,
       firstDate: DateTime(1),
-      lastDate: DateTime(9999, 12, 31),
+      lastDate: today,
       helpText: 'Pilih tanggal penghargaan',
       cancelText: 'Batal',
       confirmText: 'Pilih',
@@ -97,39 +101,27 @@ class _AwardFormPageState extends State<AwardFormPage> {
     });
   }
 
-  void _save() {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _save() async {
+    if (_saving || !_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
-    FocusScope.of(context).unfocus();
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Ringkasan Award'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Judul Award: $_title'),
-              const SizedBox(height: 8),
-              Text('Recognition: $_recognition'),
-              const SizedBox(height: 8),
-              Text('Deskripsi: $_description'),
-              const SizedBox(height: 8),
-              Text('URL Gambar: ${_image.isEmpty ? 'Tidak diisi' : _image}'),
-              const SizedBox(height: 8),
-              Text('Tanggal Penghargaan: ${_formatDate(_awardedAt!)}'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Tutup'),
-          ),
-        ],
-      ),
+    final award = Award(
+      title: _title,
+      recognition: _recognition,
+      description: _description,
+      image: _image,
+      awardedAt: _awardedAt!,
     );
+    FocusScope.of(context).unfocus();
+    setState(() => _saving = true);
+    try {
+      await submitPortfolioEntry(
+        context,
+        save: (api, token) => api.createAward(award, token: token),
+        successMessage: 'Award berhasil ditambahkan',
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   InputDecoration _decoration(String label, {String? hint, IconData? icon}) =>
@@ -164,6 +156,7 @@ class _AwardFormPageState extends State<AwardFormPage> {
                     ),
                     const SizedBox(height: 24),
                     TextFormField(
+                      enabled: !_saving,
                       key: const ValueKey('award-title'),
                       decoration: _decoration('Judul Award'),
                       textCapitalization: TextCapitalization.sentences,
@@ -177,6 +170,7 @@ class _AwardFormPageState extends State<AwardFormPage> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
+                      enabled: !_saving,
                       key: const ValueKey('award-recognition'),
                       decoration: _decoration(
                         'Recognition',
@@ -193,6 +187,7 @@ class _AwardFormPageState extends State<AwardFormPage> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
+                      enabled: !_saving,
                       key: const ValueKey('award-description'),
                       decoration: _decoration('Deskripsi'),
                       keyboardType: TextInputType.multiline,
@@ -205,6 +200,7 @@ class _AwardFormPageState extends State<AwardFormPage> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
+                      enabled: !_saving,
                       key: const ValueKey('award-image'),
                       decoration: _decoration(
                         'URL Gambar (opsional)',
@@ -219,6 +215,7 @@ class _AwardFormPageState extends State<AwardFormPage> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
+                      enabled: !_saving,
                       key: const ValueKey('award-date'),
                       controller: _dateController,
                       readOnly: true,
@@ -234,9 +231,9 @@ class _AwardFormPageState extends State<AwardFormPage> {
                     ),
                     const SizedBox(height: 24),
                     FilledButton.icon(
-                      onPressed: _save,
+                      onPressed: _saving ? null : _save,
                       icon: const Icon(Icons.save_outlined),
-                      label: const Text('Simpan'),
+                      label: Text(_saving ? 'Sedang menyimpan…' : 'Simpan'),
                     ),
                   ],
                 ),

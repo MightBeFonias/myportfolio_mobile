@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:myportfolio_mobile/project_form.dart';
+import 'package:myportfolio_mobile/screens/experience_form.dart';
 import 'package:myportfolio_mobile/screens/award_form.dart';
+import 'package:myportfolio_mobile/screens/portfolio_list_screen.dart';
+import 'package:myportfolio_mobile/services/auth_state.dart';
+import 'package:myportfolio_mobile/widgets/auth_guard.dart';
 import 'package:myportfolio_mobile/widgets/left_drawer.dart';
+import 'package:provider/provider.dart';
 
 class MyHomePage extends StatelessWidget {
   const MyHomePage({super.key});
@@ -10,15 +14,22 @@ class MyHomePage extends StatelessWidget {
   final String nama = 'Fatih Naufal Habibillah';
   final String kelas = 'PBP B';
 
-  final List<ItemHomepage> items = const [
-    ItemHomepage('Lihat Proyek', Icons.folder, Colors.blue),
-    ItemHomepage('Tambah Proyek', Icons.add_circle, Colors.green),
-    ItemHomepage('Tambah Award', Icons.emoji_events, Colors.deepOrange),
-    ItemHomepage('Logout', Icons.logout, Colors.red),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final isLoggedIn = context.watch<AuthState>().isLoggedIn;
+    final items = [
+      const ItemHomepage('Lihat Experience', Icons.work_outline, Colors.blue),
+      const ItemHomepage(
+        'Lihat Award',
+        Icons.emoji_events_outlined,
+        Colors.deepPurple,
+      ),
+      const ItemHomepage('Tambah Experience', Icons.add_circle, Colors.green),
+      const ItemHomepage('Tambah Award', Icons.emoji_events, Colors.deepOrange),
+      isLoggedIn
+          ? const ItemHomepage('Logout', Icons.logout, Colors.red)
+          : const ItemHomepage('Login', Icons.login, Colors.indigo),
+    ];
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -115,25 +126,24 @@ class ItemCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          if (item.name == 'Tambah Award') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const AwardFormPage()),
-            );
-          } else if (item.name == 'Tambah Proyek') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ProjectFormPage()),
-            );
-          } else {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(
-                SnackBar(
-                  content: Text('Kamu telah menekan tombol ${item.name}!'),
-                ),
-              );
+        onTap: () async {
+          switch (item.name) {
+            case 'Login':
+              await ensureLoggedIn(context);
+            case 'Logout':
+              await signOut(context);
+            case 'Lihat Experience':
+              _open(context, const ExperienceListScreen());
+            case 'Lihat Award':
+              _open(context, const AwardListScreen());
+            case 'Tambah Experience':
+              if (await ensureLoggedIn(context) && context.mounted) {
+                _open(context, const ExperienceFormPage());
+              }
+            case 'Tambah Award':
+              if (await ensureLoggedIn(context) && context.mounted) {
+                _open(context, const AwardFormPage());
+              }
           }
         },
         child: Padding(
@@ -153,5 +163,9 @@ class ItemCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _open(BuildContext context, Widget page) {
+    Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => page));
   }
 }

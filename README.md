@@ -1,43 +1,62 @@
 # myportfolio_mobile
 
-MyPortfolio Mobile adalah prototipe aplikasi portofolio berbasis Flutter untuk Pemrograman Berbasis Platform (PBP). Proyek ini menggunakan navigasi drawer dari Tutorial 09 dan formulir Award untuk Tugas 8.
+MyPortfolio Mobile adalah aplikasi portofolio Flutter untuk Pemrograman Berbasis Platform (PBP).
 
 ## Fitur
 
-- Halaman utama menampilkan tiga kartu informasi berisi NPM, nama, dan kelas.
-- Menu **Lihat Proyek**, **Tambah Proyek**, **Tambah Award**, dan **Logout** memakai ikon dan warna berbeda. Kisi memakai dua kolom pada layar sempit dan tiga kolom pada layar lebih lebar. Halaman utama dapat digulir.
-- **Tambah Proyek** membuka formulir Tutorial 09, sedangkan **Tambah Award** membuka formulir baru. **Lihat Proyek** dan **Logout** masih menampilkan `SnackBar` demonstrasi.
-- Drawer bersama menyediakan **Home**, **Add Project**, dan **Add Award**. **Home** kembali ke halaman utama yang sudah ada.
-- Formulir Award memvalidasi judul, recognition, deskripsi, URL gambar opsional, dan tanggal penghargaan sebelum menampilkan dialog ringkasan. Tombol **Tutup** mengembalikan pengguna ke formulir dengan isian tetap tersedia.
-- Tombol **Simpan** pada tugas ini hanya menampilkan ringkasan; belum menyimpan data ke basis data atau mengirimkannya ke backend.
+- Daftar dan detail **Experience** serta **Award** menggunakan API Django dan dapat dibuka tanpa login.
+- Login memakai token DRF. Akun superuser Django dapat menambahkan Experience dan Award melalui formulir yang tervalidasi. Logout mencabut token di Django.
+- Menu Home dan drawer menyediakan akses ke daftar, formulir, serta login atau logout.
 
-## Menjalankan proyek
+## Menjalankan aplikasi
 
-Siapkan Git, Flutter SDK yang menyertakan Dart `>=3.13.7 <4.0.0` sesuai [pubspec.yaml](pubspec.yaml), dan target yang sudah dikonfigurasi, misalnya emulator Android atau Chrome. [Panduan instalasi Flutter](https://docs.flutter.dev/install)
+Siapkan Flutter yang menyertakan Dart `>=3.13.7 <4.0.0`, lalu pilih emulator Android atau Chrome. [Panduan instalasi Flutter](https://docs.flutter.dev/install)
 
-```bash
-git clone https://github.com/MightBeFonias/myportfolio_mobile.git
-cd myportfolio_mobile
-flutter pub get
-flutter devices
-flutter run
+Di repositori Django `myportofolio`, aktifkan virtual environment dan jalankan:
+
+```sh
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
 ```
 
-Jika beberapa perangkat tersedia, pilih salah satunya dengan `flutter run -d <device-id>`. Untuk Chrome, gunakan `flutter run -d chrome`. Setelah halaman utama tampil, tekan **Tambah Award**, isi formulir, lalu tekan **Simpan**. Gunakan **Home** pada drawer formulir untuk kembali saat menjalankan aplikasi di Chrome. [Referensi perintah Flutter](https://docs.flutter.dev/reference/flutter-cli)
+Di repositori Flutter, jalankan:
 
-## Struktur proyek
+```sh
+flutter pub get
+dart run build_runner build
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8000
+```
+
+Untuk emulator Android, jalankan `flutter run`. Aplikasi memakai
+`http://10.0.2.2:8000` secara default. Untuk backend yang telah di-deploy,
+atur `API_BASE_URL` ke alamat HTTPS melalui `--dart-define`.
+
+## Struktur aplikasi
 
 | Berkas | Isi |
 | --- | --- |
-| [`lib/main.dart`](lib/main.dart) | Titik masuk aplikasi, widget `MyApp`, tema Material 3, dan penentuan halaman awal. |
-| [`lib/menu.dart`](lib/menu.dart) | Halaman utama, komponen kartu informasi dan menu, serta model data menu. |
-| [`lib/project_form.dart`](lib/project_form.dart) | Formulir Add Project dari Tutorial 09. |
-| [`lib/screens/award_form.dart`](lib/screens/award_form.dart) | Formulir Award, pemilih tanggal, validasi, dan dialog ringkasan. |
-| [`lib/widgets/left_drawer.dart`](lib/widgets/left_drawer.dart) | Drawer bersama untuk Home, Add Project, dan Add Award. |
-| [`test/widget_test.dart`](test/widget_test.dart) | Pengujian navigasi, validasi, dialog, dan layar sempit dengan papan ketik. |
-| [`pubspec.yaml`](pubspec.yaml) | Persyaratan versi Dart dan dependensi proyek. |
+| [`lib/main.dart`](lib/main.dart) | Titik masuk, tema Material 3, serta Provider untuk API dan autentikasi. |
+| [`lib/menu.dart`](lib/menu.dart) | Halaman utama dan kartu navigasi. |
+| [`lib/models/`](lib/models/) | Model JSON untuk Experience dan Award. |
+| [`lib/screens/`](lib/screens/) | Layar login, formulir, daftar, dan detail. |
+| [`lib/services/`](lib/services/) | Klien HTTP dan state autentikasi. |
+| [`lib/widgets/left_drawer.dart`](lib/widgets/left_drawer.dart) | Navigasi drawer. |
+| [`test/widget_test.dart`](test/widget_test.dart) | Pengujian navigasi, daftar, dan formulir. |
 
-### Tugas 8
+## Tutorial 10
+
+Workflow GitHub Actions menjalankan code generation, analisis, dan tes sebelum
+membuat artefak `app-release-apk`. Variabel repositori Actions `API_BASE_URL`
+dapat menunjuk ke backend HTTPS yang sudah di-deploy.
+
+Codex membantu mengintegrasikan Experience dan Award dengan API Django,
+menambahkan autentikasi serta workflow build, dan memverifikasi alur lokal.
+[Instruksi Tutorial 10 PBP Fasilkom UI](https://pbp.cs.ui.ac.id/tutorial/tutorial-10.html)
+
+## Tugas 8
+
+Jawaban reflektif berikut mendeskripsikan versi aplikasi saat Tugas 8.
 
 1. **Perbedaan `Navigator.push()`, `Navigator.pushReplacement()`, dan `Navigator.pop()`, serta navigasi formulir dan Home**
 
